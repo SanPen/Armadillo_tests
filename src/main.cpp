@@ -159,14 +159,16 @@ int main(){
     for (int i=0; i<n; i++)
         spA(i, i) = i+1;
 
-    spA.print("spA");
+    spA.print_dense("Sparse A");
     uvec rows, cols;
     rows << 1 << 2 << 3 << 6 << 8;
     cols << 0 << 1 << 2;
 
-    sp_mat spB = sp_submatrix(&spA, &rows, &cols);
-    spB.print("spB");
+    sp_submat(spA, rows, cols).print_dense("Sliced rows and cols");
 
+    sp_submat_r(spA, rows).print_dense("Sliced rows");
+
+    sp_submat_c(spA, cols).print_dense("Sliced cols");
 
     return 0;
 }
