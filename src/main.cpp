@@ -12,6 +12,20 @@ using namespace arma;
 
 // NOTE: the C++11 "auto" keyword is not recommended for use with Armadillo objects and functions
 
+//complex<double> operator * (const int & a, const complex<double> & b){
+//    if (a != 0)
+//        return complex<double>(b.real() * a, b.imag() * a);
+//     else
+//        return complex<double>(0, 0);
+//}
+//
+//
+//complex<double> operator*(const bool & a, const complex<double> & b){
+//    if (a)
+//        return b;
+//    else
+//        return complex<double>(0, 0);
+//}
 
 
 int main(){
@@ -169,6 +183,31 @@ int main(){
     sp_submat_r(spA, rows).print_dense("Sliced rows");
 
     sp_submat_c(spA, cols).print_dense("Sliced cols");
+
+    // complex stuff ///////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    std::complex<double> c(1.0, 1.0);
+    bool b = false;
+    double a = 1.0;
+    int f = 2;
+
+    double d = a * b;
+    std::complex<double> e = b * c;  // this operation is not available
+    std::complex<double> g = f * c;  // this operation is not available
+
+    std::cout << e << std::endl;
+    std::cout << g << std::endl;
+
+    arma::SpMat<std::complex<double>> spC (n, n);
+    for (int i=0; i<n; i++)
+        spC(i, i) = std::complex<double>(i+1, 1);
+
+    arma::SpMat<std::complex<double>> spC2 = spC * b;
+    spC2.print_dense("Complex sparse by bool");
+
+    arma::SpMat<std::complex<double>> spC3 = spC * f;
+    spC3.print_dense("Complex sparse by int");
 
     return 0;
 }

@@ -4,6 +4,32 @@
 #include <armadillo>
 
 
+/// Make working with std::complex<> nubmers suck less... allow promotion. /////////////////////////////////////////////
+// Trick to allow type promotion below
+template <typename T>
+struct identity_t { typedef T type; };
+
+#define COMPLEX_OPS(OP)                                                 \
+  template <typename _Tp>                                               \
+  std::complex<_Tp>                                                     \
+  operator OP(std::complex<_Tp> lhs, const typename identity_t<_Tp>::type & rhs) \
+  {                                                                     \
+    return lhs OP rhs;                                                  \
+  }                                                                     \
+  template <typename _Tp>                                               \
+  std::complex<_Tp>                                                     \
+  operator OP(const typename identity_t<_Tp>::type & lhs, const std::complex<_Tp> & rhs) \
+  {                                                                     \
+    return lhs OP rhs;                                                  \
+  }
+COMPLEX_OPS(+)
+COMPLEX_OPS(-)
+COMPLEX_OPS(*)
+COMPLEX_OPS(/)
+#undef COMPLEX_OPS
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 /*
 @brief integer binary search
 @param array vector of integer values
@@ -123,6 +149,90 @@ arma::SpMat<T> sp_submat(const arma::SpMat<T> &A, const arma::uvec &rows, const 
     new_row_ind.reshape(n, 1);
 
     return arma::SpMat<T>(new_row_ind, new_col_ptr, new_val, n_rows, n_cols);
+}
+
+
+/// p_submatrix Function to extract columns and rows from a CSC sparse matrix
+/// \tparam T data type
+/// \param A CSC Sparse matrix pointer
+/// \param rows vector of the rown indices to keep (must be sorted)
+/// \param cols  vector of the clumn indices to keep (must be sorted)
+/// \return Sparse matrix of the indicated indices
+template<typename T>
+inline
+const arma::SpSubview<T>
+submat(const arma::SpMat<T> &A, const arma::uvec &rows, const arma::uvec &cols) {
+
+    arma::uword num_rows = rows.size();
+    arma::uword num_cols = cols.size();
+
+    arma::uword n = 0;
+    arma::uword p = 0;
+
+    // variables of the sub-matrix
+    arma::Col<T> new_val(A.n_nonzero);
+    arma::uvec new_row_ind(A.n_nonzero);
+    arma::uvec new_col_ptr(num_cols + 1);
+
+    // variables for the binary search
+    arma::uword lower;
+    arma::uword upper;
+    arma::uword position;
+    arma::uword val;
+    arma::uword x;
+    bool found;
+
+    new_col_ptr(p) = 0;
+
+    for (arma::uword const& j : cols) { // for every column in the cols vector
+
+        for (arma::uword k = A.col_ptrs[j]; k < A.col_ptrs[j + 1]; k++) {  // traverse the rows of A, at the column j
+
+            // k is the index of the "values" and "row_indices" of the column j
+
+            // binary search: we need to determine which rows of A[:, j] are in the specified vector "rows"
+            lower = 0;
+            upper = num_rows;
+            x = A.row_indices[k];
+            found = false;
+
+            while (lower < upper && !found) {
+
+                position = lower + (upper - lower) / 2;
+                val = rows(position);
+
+                if (x == val) { // found: the row "x" at the column j exists in the rows vector used for the subview
+
+                    found = true;
+                    new_val(n) = A.values[k];   // store the value
+                    new_row_ind(n) = position;        // store the index where the original index was found inside "rows"
+                    n++;
+                }
+                else if (x > val) {
+
+                    if (lower == position) {
+                        found = true;
+                    } else {
+                        lower = position;
+                    }
+                }
+                else if (x < val) {
+
+                    upper = position;
+                }
+            }
+        }
+
+        p++;
+        new_col_ptr(p) = n;
+    }
+    new_col_ptr(p) = n;
+
+    // reshape the vectors to the actual number of elements
+    new_val.reshape(n, 1);
+    new_row_ind.reshape(n, 1);
+
+    return arma::SpSubview<T>(new_row_ind, new_col_ptr, new_val, num_rows, num_cols);
 }
 
 
